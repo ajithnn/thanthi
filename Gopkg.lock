@@ -14,6 +14,54 @@
   version = "v1.2.0"
 
 [[projects]]
+  name = "github.com/jroimartin/gocui"
+  packages = ["."]
+  revision = "c055c87ae801372cd74a0839b972db4f7697ae5f"
+  version = "v0.4.0"
+
+[[projects]]
+  name = "github.com/mattn/go-runewidth"
+  packages = ["."]
+  revision = "ce7b0b5c7b45a81508558cd1dba6bb1e4ddb51bb"
+  version = "v0.0.3"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/nsf/termbox-go"
+  packages = ["."]
+  revision = "60ab7e3d12ed91bc1b2486559c4b3a6b62297577"
+
+[[projects]]
+  branch = "master"
+  name = "gitlab.com/golang-commonmark/html"
+  packages = ["."]
+  revision = "cfaf75183c4a5f0e44e3d51ece1065accafdd2b3"
+
+[[projects]]
+  branch = "master"
+  name = "gitlab.com/golang-commonmark/linkify"
+  packages = ["."]
+  revision = "c22b7bdb117955ff2cc0e3724083d35e3419d71e"
+
+[[projects]]
+  branch = "master"
+  name = "gitlab.com/golang-commonmark/markdown"
+  packages = ["."]
+  revision = "246aecf104611b4ecb30fe0f1c2655bda38b7324"
+
+[[projects]]
+  branch = "master"
+  name = "gitlab.com/golang-commonmark/mdurl"
+  packages = ["."]
+  revision = "e5bce34c34f29ecf232fec34f3982e55533ec14e"
+
+[[projects]]
+  branch = "master"
+  name = "gitlab.com/golang-commonmark/puny"
+  packages = ["."]
+  revision = "2cd490539afe7c6fc0eda6c59ef88fa93a00ea0d"
+
+[[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context","context/ctxhttp"]
@@ -24,6 +72,12 @@
   name = "golang.org/x/oauth2"
   packages = [".","google","internal","jws","jwt"]
   revision = "9dcd33a902f40452422c2367fefcb95b54f9f8f8"
+
+[[projects]]
+  name = "golang.org/x/text"
+  packages = ["collate","collate/build","internal/colltab","internal/gen","internal/tag","internal/triegen","internal/ucd","language","transform","unicode/cldr","unicode/norm","unicode/rangetable"]
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  version = "v0.3.0"
 
 [[projects]]
   branch = "master"
@@ -40,6 +94,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "30f40cfe22a80274127485a77a507e7b13f5d459ccb6f6eee123553609333e75"
+  inputs-digest = "ff2398fccf0caa61a85fd0812192e73e75477fd039ab3beb6879301cab8d5396"
   solver-name = "gps-cdcl"
   solver-version = 1
