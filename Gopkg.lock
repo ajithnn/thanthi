@@ -4,8 +4,8 @@
 [[projects]]
   name = "cloud.google.com/go"
   packages = ["compute/metadata"]
-  revision = "debcad1964693daf8ef4bc06292d7e828e075130"
-  version = "v0.31.0"
+  revision = "1fd54cf41e6e0e178ffe3c52b0e2260281f603e3"
+  version = "v0.32.0"
 
 [[projects]]
   name = "github.com/golang/protobuf"
@@ -47,7 +47,7 @@
   branch = "master"
   name = "gitlab.com/golang-commonmark/markdown"
   packages = ["."]
-  revision = "246aecf104611b4ecb30fe0f1c2655bda38b7324"
+  revision = "772775880e1fbf39a7804149ed11c0f714ec89fe"
 
 [[projects]]
   branch = "master"
@@ -65,13 +65,13 @@
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context","context/ctxhttp"]
-  revision = "c44066c5c816ec500d459a2a324a753f78531ae0"
+  revision = "c10e9556a7bc0e7c942242b606f0acf024ad5d6a"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/oauth2"
   packages = [".","google","internal","jws","jwt"]
-  revision = "9dcd33a902f40452422c2367fefcb95b54f9f8f8"
+  revision = "232e45548389bd9357411a6922a07c5fd4068bda"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -83,17 +83,17 @@
   branch = "master"
   name = "google.golang.org/api"
   packages = ["gensupport","gmail/v1","googleapi","googleapi/internal/uritemplates"]
-  revision = "4a09e5f797c2f0a9fa133b1416b52dde07bce7de"
+  revision = "04bb50b6b83d0e72253821af8cf3252d8e866517"
 
 [[projects]]
   name = "google.golang.org/appengine"
   packages = [".","internal","internal/app_identity","internal/base","internal/datastore","internal/log","internal/modules","internal/remote_api","internal/urlfetch","urlfetch"]
-  revision = "ae0ab99deb4dc413a2b4bd6c8bdd0eb67f1e4d06"
-  version = "v1.2.0"
+  revision = "4a4468ece617fc8205e99368fa2200e9d1fad421"
+  version = "v1.3.0"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ff2398fccf0caa61a85fd0812192e73e75477fd039ab3beb6879301cab8d5396"
+  inputs-digest = "c5cdb2585cd6d16314fb573e60f548cc3bbfad9dd8e7cedd0a4a9cb8ca244f51"
   solver-name = "gps-cdcl"
   solver-version = 1

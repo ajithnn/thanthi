@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
@@ -14,10 +15,23 @@ import (
 	"google.golang.org/api/gmail/v1"
 )
 
+type Thread struct {
+	ID       string
+	Subject  string
+	Snippet  string
+	Messages []*Message
+}
+
+type Message struct {
+	From  string
+	Reply string
+	Body  string
+}
+
 type Mailer struct {
-	Service  *gmail.Service
-	User     string
-	Messages map[string]string
+	Service *gmail.Service
+	User    string
+	Threads []*Thread
 }
 
 func NewMailer(creds []byte) (*Mailer, error) {
@@ -34,9 +48,8 @@ func NewMailer(creds []byte) (*Mailer, error) {
 	}
 
 	return &Mailer{
-		srv,
-		"me",
-		make(map[string]string),
+		Service: srv,
+		User:    "me",
 	}, nil
 }
 
@@ -73,32 +86,28 @@ func (mailer *Mailer) ListMail(labels []string) error {
 		return err
 	}
 
-	msgs := make(map[string]string)
 	for _, thread := range resp.Threads {
-		resp, err := mailer.Service.Users.Threads.Get(mailer.User, thread.Id).Format("metadata").Do()
+		resp, err := mailer.Service.Users.Threads.Get(mailer.User, thread.Id).Format("full").Do()
 		if err != nil {
 			return err
 		}
+		curThread := &Thread{ID: thread.Id, Snippet: thread.Snippet}
 		for _, msg := range resp.Messages {
-			curSnippet := msg.Snippet
-			curThread := msg.ThreadId
-			curSub := ""
-			curFrom := ""
+			curMsg := &Message{}
 			for _, header := range msg.Payload.Headers {
-				if header.Name == "Subject" {
-					curSub = header.Value
+				if header.Name == "Subject" && curThread.Subject == "" {
+					curThread.Subject = header.Value
 				}
 				if header.Name == "From" {
-					curFrom = header.Value
+					curMsg.From = header.Value
 				}
 			}
-			msgs[curThread] += "   " + curSub + ":"
-			msgs[curThread] += curFrom + ",\n\n"
-			msgs[curThread] += curSnippet + "\n\n"
+			curMsg.ExtractMessage(msg)
+			curThread.Messages = append(curThread.Messages, curMsg)
 		}
+		mailer.Threads = append(mailer.Threads, curThread)
 	}
-	mailer.Messages = msgs
-	return nil
+	return err
 }
 
 func (mailer *Mailer) deleteMessages(r *gmail.ListMessagesResponse) error {
@@ -108,6 +117,32 @@ func (mailer *Mailer) deleteMessages(r *gmail.ListMessagesResponse) error {
 	}
 	err := mailer.Service.Users.Messages.BatchDelete(mailer.User, &gmail.BatchDeleteMessagesRequest{Ids: msgIds}).Do()
 	return err
+}
+
+func (m *Message) ExtractMessage(msg *gmail.Message) {
+	var body []byte
+	mimeType := strings.Split(msg.Payload.MimeType, "/")
+	switch mimeType[0] {
+	case "multipart":
+		curParts := make([]*gmail.MessagePart, 0)
+		for _, part := range msg.Payload.Parts {
+			if len(part.Parts) > 0 {
+				curParts = append(curParts, part.Parts...)
+			}
+		}
+		if len(curParts) == 0 {
+			curParts = append(curParts, msg.Payload.Parts...)
+		}
+		for _, part := range curParts {
+			body, _ = base64.StdEncoding.DecodeString(part.Body.Data)
+			m.Body += strings.Replace(string(body), "\r", "", -1)
+		}
+	case "text":
+		body, _ = base64.StdEncoding.DecodeString(msg.Payload.Body.Data)
+		m.Body += strings.Replace(string(body), "\r", "", -1)
+	default:
+		fmt.Println("Unknown")
+	}
 }
 
 // Retrieve a token, saves the token, then returns the generated client.
