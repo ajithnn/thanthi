@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"text/tabwriter"
 
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
@@ -44,7 +45,11 @@ func NewMailer(creds []byte, label string) (*Mailer, error) {
 		return &Mailer{}, err
 	}
 
-	client := getClient(config)
+	client, err := getClient(config)
+	if err != nil {
+		return &Mailer{}, err
+	}
+
 	srv, err := gmail.New(client)
 	if err != nil {
 		return &Mailer{}, err
@@ -63,6 +68,20 @@ func (mailer *Mailer) DeleteAll(labels []string) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (mailer *Mailer) ListLabels() error {
+	resp, err := mailer.Service.Users.Labels.List(mailer.User).Do()
+	if err != nil {
+		return err
+	}
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', tabwriter.TabIndent)
+	for _, label := range resp.Labels {
+		fmt.Fprintf(w, "ID: %s \t\t\t\t\t\t\t\t\t Name: %s\n", label.Id, label.Name)
+	}
+	w.Flush()
 	return nil
 }
 
@@ -174,24 +193,36 @@ func (m *Message) ExtractMessage(msg *gmail.Message) {
 	}
 }
 
+func FetchToken(creds []byte) error {
+	tokFile := "configs/token.json"
+	os.Remove(tokFile)
+	config, err := google.ConfigFromJSON(creds, gmail.MailGoogleComScope)
+	if err != nil {
+		return err
+	}
+
+	tok := getTokenFromWeb(config)
+	saveToken(tokFile, tok)
+	return nil
+}
+
 // Retrieve a token, saves the token, then returns the generated client.
-func getClient(config *oauth2.Config) *http.Client {
+func getClient(config *oauth2.Config) (*http.Client, error) {
 	tokFile := "configs/token.json"
 	tok, err := tokenFromFile(tokFile)
 	if err != nil {
-		tok = getTokenFromWeb(config)
-		saveToken(tokFile, tok)
+		return &http.Client{}, err
 	}
-	return config.Client(context.Background(), tok)
+	return config.Client(context.Background(), tok), nil
 }
 
 // Request a token from the web, then returns the retrieved token.
 func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
-	fmt.Printf("Go to the following link in your browser then type the "+
-		"authorization code: \n%v\n", authURL)
+	fmt.Printf("Open the following link in your browser: \n%v\n", authURL)
 
 	var authCode string
+	fmt.Printf("Enter Auth Code: ")
 	if _, err := fmt.Scan(&authCode); err != nil {
 		log.Fatalf("Unable to read authorization code: %v", err)
 	}

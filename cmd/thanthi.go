@@ -22,15 +22,23 @@ func main() {
 	cc := flag.String("cc", "", "Mail cc comma separated list")
 	file := flag.String("f", "", "Mail Body file")
 	label := flag.String("l", "IMPORTANT", "comma separated Labels for delete-all and read")
+	configure := flag.Bool("configure", false, "comma separated Labels for delete-all and read")
 
 	flag.Parse()
 
 	box := packr.NewBox("../configs/")
-
 	creds, err := box.Find("credentials.json")
-	//creds, err := ioutil.ReadFile("configs/credentials.json")
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
+	}
+
+	if *configure {
+		err := app.FetchToken(creds)
+		if err != nil {
+			log.Fatalf("Unable to configure Token. %v", err)
+		}
+		fmt.Println("Successfully configured")
+		os.Exit(0)
 	}
 
 	mailer, err := app.NewMailer(creds, *label)
@@ -51,19 +59,15 @@ func main() {
 		}
 		md := markdown.New(markdown.XHTMLOutput(true))
 		err = mailer.SendMail(*to, *subject, *cc, md.RenderToString([]byte(msg)))
-	case "ui":
-		//		r, err := render.NewRenderer()
-		//		if err == nil {
-		//			defer r.Close()
-		//			r.Show()
-		//		}
-	case "test":
+	case "read":
 		r, err := render.NewRenderer(mailer)
 		err = mailer.ListMail("init")
 		if err == nil {
 			defer r.Close()
 			r.Show()
 		}
+	case "list":
+		err = mailer.ListLabels()
 	default:
 		log.Fatalf("Unknown mode: Usage thanthi -m send|delete-all|read [options]")
 	}

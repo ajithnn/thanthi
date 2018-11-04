@@ -269,6 +269,7 @@ func (r *Render) renderMailView(index int) {
 	}
 	r.Views[MAIN].Editable = true
 	r.Views[MAIN].Wrap = true
+	r.Views[MAIN].SetCursor(0, 0)
 }
 
 func (r *Render) renderSideView() {
