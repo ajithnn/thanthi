@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	SIDE = 0
-	MAIN = 1
+	SIDE   = 0
+	HEADER = 1
+	MAIN   = 2
 )
 
 type Render struct {
@@ -44,6 +45,50 @@ func (r *Render) Show() error {
 
 func (r *Render) Close() {
 	r.Handler.Close()
+}
+
+func (r *Render) loadMail(g *gocui.Gui, v *gocui.View) error {
+
+	_, cy := v.Cursor()
+	r.Views[MAIN].Clear()
+	r.renderMailView(cy)
+	if _, err := g.SetCurrentView("main"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Render) nextPage(g *gocui.Gui) error {
+
+	r.MailHandler.ListMail("next")
+	r.renderHeader(g, "Messages")
+
+	r.Views[SIDE].Clear()
+	r.Views[MAIN].Clear()
+	r.renderSideView()
+	r.renderMailView(0)
+
+	if _, err := g.SetCurrentView("side"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Render) prevPage(g *gocui.Gui) error {
+
+	r.MailHandler.ListMail("prev")
+	r.renderHeader(g, "Messages")
+
+	r.Views[SIDE].Clear()
+	r.Views[MAIN].Clear()
+	r.renderSideView()
+	r.renderMailView(0)
+
+	if _, err := g.SetCurrentView("side"); err != nil {
+		return err
+	}
+	return nil
 }
 
 func nextView(g *gocui.Gui, v *gocui.View) error {
@@ -81,27 +126,6 @@ func cursorUp(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
-func (r *Render) getLine(g *gocui.Gui, v *gocui.View) error {
-
-	_, cy := v.Cursor()
-	r.Views[MAIN].Clear()
-	r.renderMailView(cy)
-	if _, err := g.SetCurrentView("main"); err != nil {
-		return err
-	}
-	return nil
-}
-
-func delMsg(g *gocui.Gui, v *gocui.View) error {
-	if err := g.DeleteView("msg"); err != nil {
-		return err
-	}
-	if _, err := g.SetCurrentView("side"); err != nil {
-		return err
-	}
-	return nil
-}
-
 func quit(g *gocui.Gui, v *gocui.View) error {
 	return gocui.ErrQuit
 }
@@ -123,13 +147,23 @@ func (r *Render) keybindings() error {
 	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding("side", gocui.KeyEnter, gocui.ModNone, r.getLine); err != nil {
+	if err := g.SetKeybinding("side", gocui.KeyEnter, gocui.ModNone, r.loadMail); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding("msg", gocui.KeyEnter, gocui.ModNone, delMsg); err != nil {
+	if err := g.SetKeybinding("side", gocui.KeyPgup, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
+		r.renderHeader(g, "Loading....")
+		g.Update(r.prevPage)
+		return nil
+	}); err != nil {
 		return err
 	}
-
+	if err := g.SetKeybinding("side", gocui.KeyPgdn, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
+		r.renderHeader(g, "Loading....")
+		g.Update(r.nextPage)
+		return nil
+	}); err != nil {
+		return err
+	}
 	if err := g.SetKeybinding("main", gocui.KeyCtrlS, gocui.ModNone, saveMain); err != nil {
 		return err
 	}
@@ -200,7 +234,8 @@ func (r *Render) layout(g *gocui.Gui) error {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		fmt.Fprintf(v, "\t\t\t\t\t\t\t\t\t%s", []byte("Email"))
+		r.Views = append(r.Views, v)
+		r.renderHeader(g, "Messages")
 	}
 
 	if v, err := g.SetView("main", maxX/3-10, 1, maxX, maxY); err != nil {
@@ -217,9 +252,19 @@ func (r *Render) layout(g *gocui.Gui) error {
 	return nil
 }
 
+func (r *Render) renderHeader(g *gocui.Gui, headerMsg string) error {
+	r.Views[HEADER].Clear()
+	r.Views[HEADER].Highlight = true
+	fmt.Fprintf(r.Views[HEADER], "\t\t\t\t\t\t\t\t\t\t\t\t\t\t%s", headerMsg)
+	if _, err := g.SetCurrentView("mail-top"); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *Render) renderMailView(index int) {
 	for _, msg := range r.MailHandler.Threads[index].Messages {
-		fmt.Fprintf(r.Views[MAIN], "%s", msg.Body)
+		fmt.Fprintf(r.Views[MAIN], "%s\n", msg.Body)
 		fmt.Fprintf(r.Views[MAIN], "%s\n", []byte("-------------------------------------------------------------------------------------------------"))
 	}
 	r.Views[MAIN].Editable = true

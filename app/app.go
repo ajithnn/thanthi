@@ -29,12 +29,15 @@ type Message struct {
 }
 
 type Mailer struct {
-	Service *gmail.Service
-	User    string
-	Threads []*Thread
+	Service          *gmail.Service
+	User             string
+	Threads          []*Thread
+	Labels           []string
+	Pages            []string
+	CurrentPageIndex int
 }
 
-func NewMailer(creds []byte) (*Mailer, error) {
+func NewMailer(creds []byte, label string) (*Mailer, error) {
 	// If modifying these scopes, delete your previously saved token.json.
 	config, err := google.ConfigFromJSON(creds, gmail.MailGoogleComScope)
 	if err != nil {
@@ -50,6 +53,8 @@ func NewMailer(creds []byte) (*Mailer, error) {
 	return &Mailer{
 		Service: srv,
 		User:    "me",
+		Labels:  strings.Split(label, ","),
+		Pages:   []string{""},
 	}, nil
 }
 
@@ -80,8 +85,32 @@ func (mailer *Mailer) SendMail(to, sub, cc, msg string) error {
 	return err
 }
 
-func (mailer *Mailer) ListMail(labels []string) error {
-	resp, err := mailer.Service.Users.Threads.List(mailer.User).LabelIds(labels...).MaxResults(10).Q("is:unread").Do()
+func (mailer *Mailer) ListMail(mode string) error {
+
+	var err error
+	var resp *gmail.ListThreadsResponse
+
+	mailer.Threads = make([]*Thread, 0)
+	switch mode {
+	case "init":
+		resp, err = mailer.Service.Users.Threads.List(mailer.User).LabelIds(mailer.Labels...).MaxResults(20).Q("is:unread").Do()
+		if err == nil {
+			mailer.CurrentPageIndex = 0
+			mailer.Pages = append(mailer.Pages, resp.NextPageToken)
+		}
+	case "next":
+		resp, err = mailer.Service.Users.Threads.List(mailer.User).LabelIds(mailer.Labels...).MaxResults(20).PageToken(mailer.Pages[mailer.CurrentPageIndex+1]).Q("is:unread").Do()
+		if err == nil {
+			mailer.Pages = append(mailer.Pages, resp.NextPageToken)
+			mailer.CurrentPageIndex += 1
+		}
+	case "prev":
+		if mailer.CurrentPageIndex == 0 {
+			mailer.CurrentPageIndex = 1
+		}
+		resp, err = mailer.Service.Users.Threads.List(mailer.User).LabelIds(mailer.Labels...).MaxResults(20).PageToken(mailer.Pages[mailer.CurrentPageIndex-1]).Q("is:unread").Do()
+		mailer.CurrentPageIndex -= 1
+	}
 	if err != nil {
 		return err
 	}

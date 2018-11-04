@@ -8,16 +8,46 @@
   version = "v0.32.0"
 
 [[projects]]
+  name = "github.com/gobuffalo/envy"
+  packages = ["."]
+  revision = "e0b181c424e7ca1a36f6f2db4bdfd25ef3421e77"
+  version = "v1.6.7"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/gobuffalo/packd"
+  packages = ["."]
+  revision = "c8273487026482b912d61bdbffd54705e96d1e8e"
+
+[[projects]]
+  name = "github.com/gobuffalo/packr"
+  packages = ["."]
+  revision = "816688b5663f5e5b1ca22fe1f14bf568058dbc05"
+  version = "v1.17.0"
+
+[[projects]]
   name = "github.com/golang/protobuf"
   packages = ["proto"]
   revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
   version = "v1.2.0"
 
 [[projects]]
+  name = "github.com/joho/godotenv"
+  packages = ["."]
+  revision = "23d116af351c84513e1946b527c88823e476be13"
+  version = "v1.3.0"
+
+[[projects]]
   name = "github.com/jroimartin/gocui"
   packages = ["."]
   revision = "c055c87ae801372cd74a0839b972db4f7697ae5f"
   version = "v0.4.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/markbates/oncer"
+  packages = ["."]
+  revision = "05fccaae8fc423476d98fd4c3e4699ba0fbbde48"
 
 [[projects]]
   name = "github.com/mattn/go-runewidth"
@@ -30,6 +60,12 @@
   name = "github.com/nsf/termbox-go"
   packages = ["."]
   revision = "60ab7e3d12ed91bc1b2486559c4b3a6b62297577"
+
+[[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
 
 [[projects]]
   branch = "master"
@@ -94,6 +130,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c5cdb2585cd6d16314fb573e60f548cc3bbfad9dd8e7cedd0a4a9cb8ca244f51"
+  inputs-digest = "1ad695f7d180d30792e96c6b63364fc40eee97f90b5d57e4ba8e5e0bb75dfb0e"
   solver-name = "gps-cdcl"
   solver-version = 1

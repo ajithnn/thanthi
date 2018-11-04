@@ -11,6 +11,7 @@ import (
 
 	"github.com/ajithnn/thanthi/app"
 	"github.com/ajithnn/thanthi/render"
+	"github.com/gobuffalo/packr"
 	"gitlab.com/golang-commonmark/markdown"
 )
 
@@ -20,16 +21,19 @@ func main() {
 	to := flag.String("t", "to", "Mail To, comma separated list")
 	cc := flag.String("cc", "", "Mail cc comma separated list")
 	file := flag.String("f", "", "Mail Body file")
-	label := flag.String("l", "label", "comma separated Labels for delete-all and read")
+	label := flag.String("l", "IMPORTANT", "comma separated Labels for delete-all and read")
 
 	flag.Parse()
 
-	creds, err := ioutil.ReadFile("configs/credentials.json")
+	box := packr.NewBox("../configs/")
+
+	creds, err := box.Find("credentials.json")
+	//creds, err := ioutil.ReadFile("configs/credentials.json")
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
 	}
 
-	mailer, err := app.NewMailer(creds)
+	mailer, err := app.NewMailer(creds, *label)
 	if err != nil {
 		log.Fatalf("Unable to create client handler: %v", err)
 	}
@@ -54,8 +58,8 @@ func main() {
 		//			r.Show()
 		//		}
 	case "test":
-		err = mailer.ListMail([]string{"IMPORTANT"})
 		r, err := render.NewRenderer(mailer)
+		err = mailer.ListMail("init")
 		if err == nil {
 			defer r.Close()
 			r.Show()
