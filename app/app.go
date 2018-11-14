@@ -158,6 +158,26 @@ func (mailer *Mailer) ListMail(mode string) error {
 	return err
 }
 
+func (mailer *Mailer) MarkAsRead(thread *Thread) error {
+	modReq := &gmail.ModifyThreadRequest{
+		RemoveLabelIds: []string{"UNREAD"},
+	}
+	_, err := mailer.Service.Users.Threads.Modify(mailer.User, thread.ID, modReq).Do()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (mailer *Mailer) getThread(id string) (*Thread, error) {
+	for _, thread := range mailer.Threads {
+		if thread.ID == id {
+			return thread, nil
+		}
+	}
+	return &Thread{}, fmt.Errorf("404:Thread not found")
+}
+
 func (mailer *Mailer) deleteMessages(r *gmail.ListMessagesResponse) error {
 	msgIds := make([]string, 0)
 	for _, l := range r.Messages {

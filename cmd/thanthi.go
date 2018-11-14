@@ -16,13 +16,13 @@ import (
 )
 
 func main() {
-	mode := flag.String("m", "send", "send|delete-all|read")
-	subject := flag.String("s", "subject", "Mail Subject if send")
-	to := flag.String("t", "to", "Mail To, comma separated list")
-	cc := flag.String("cc", "", "Mail cc comma separated list")
-	file := flag.String("f", "", "Mail Body file")
-	label := flag.String("l", "IMPORTANT", "comma separated Labels for delete-all and read")
-	configure := flag.Bool("configure", false, "comma separated Labels for delete-all and read")
+	mode := flag.String("m", "labels", "send - To send Emails|read - Read emails|clear - Clear all for given labels|labels - List valid labels")
+	subject := flag.String("s", "subject", "EMail Subject for send mode")
+	to := flag.String("t", "to", "comma separated 'TO' list for send mode")
+	cc := flag.String("cc", "", "comma separated 'CC' list for send mode")
+	file := flag.String("f", "", "File containing EMail body in md format for send mode")
+	label := flag.String("l", "IMPORTANT", "comma separated Labels needed for clear and read modes")
+	configure := flag.Bool("configure", false, "Used configure oauth creds for account.Re-run to change account.")
 
 	flag.Parse()
 
@@ -47,7 +47,7 @@ func main() {
 	}
 
 	switch *mode {
-	case "delete-all":
+	case "clear":
 		labels := strings.Split(*label, ",")
 		err = mailer.DeleteAll(labels)
 	case "send":
@@ -66,7 +66,7 @@ func main() {
 			defer r.Close()
 			r.Show()
 		}
-	case "list":
+	case "labels":
 		err = mailer.ListLabels()
 	default:
 		log.Fatalf("Unknown mode: Usage thanthi -m send|delete-all|read [options]")
