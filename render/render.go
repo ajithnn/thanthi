@@ -2,8 +2,6 @@ package render
 
 import (
 	"fmt"
-	"io"
-	"io/ioutil"
 	"strings"
 
 	"github.com/ajithnn/thanthi/app"
@@ -97,10 +95,67 @@ func (r *Render) prevPage(g *gocui.Gui) error {
 	return nil
 }
 
+func (r *Render) initPage(g *gocui.Gui) error {
+	r.MailHandler.ListMail("init")
+	r.renderHeader(g, "Messages")
+
+	r.Views[SIDE].Clear()
+	r.Views[MAIN].Clear()
+	r.renderSideView()
+	r.renderMailView(0)
+
+	if _, err := g.SetCurrentView("side"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Render) reloadPage(g *gocui.Gui) error {
+	r.MailHandler.ListMail("reload")
+	r.renderHeader(g, "Messages")
+
+	r.Views[SIDE].Clear()
+	r.Views[MAIN].Clear()
+	r.renderSideView()
+	r.renderMailView(0)
+
+	if _, err := g.SetCurrentView("side"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Render) sendMail(g *gocui.Gui, v *gocui.View) error {
+	var to, cc, bcc, sub, body string
+	lines := v.BufferLines()
+	for index, line := range lines {
+		switch index {
+		case 1:
+			to = line[strings.Index(line, ":")+1:]
+		case 2:
+			cc = line[strings.Index(line, ":")+1:]
+		case 3:
+			bcc = line[strings.Index(line, ":")+1:]
+		case 4:
+			sub = line[strings.Index(line, ":")+1:]
+		case 5:
+		case 0:
+		default:
+			body += line + "\n"
+		}
+	}
+	err := r.MailHandler.SendMail(to, sub, cc, bcc, body)
+	if err != nil {
+		panic(err)
+	}
+	g.Update(r.renderCompose)
+	return nil
+}
+
 func (r *Render) markRead(g *gocui.Gui, v *gocui.View) error {
 	_, cy := r.Views[SIDE].Cursor()
 	_ = r.MailHandler.MarkAsRead(r.MailHandler.Threads[cy])
-	g.Update(r.prevPage)
+	g.Update(r.reloadPage)
 	return nil
 }
 
@@ -188,7 +243,22 @@ func (r *Render) keybindings() error {
 	if err := g.SetKeybinding("", gocui.KeyCtrlR, gocui.ModNone, r.markRead); err != nil {
 		return err
 	}
+	if err := g.SetKeybinding("", gocui.KeyCtrlL, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
+		g.Update(r.initPage)
+		return nil
+	}); err != nil {
+		return err
+	}
 	if err := g.SetKeybinding("", gocui.KeyCtrlH, gocui.ModNone, r.renderKeyBind); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gocui.KeyCtrlN, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
+		g.Update(r.renderCompose)
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("compose", gocui.KeyCtrlS, gocui.ModNone, r.sendMail); err != nil {
 		return err
 	}
 	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
@@ -209,52 +279,6 @@ func (r *Render) keybindings() error {
 		g.Update(r.nextPage)
 		return nil
 	}); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("main", gocui.KeyCtrlS, gocui.ModNone, saveMain); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("main", gocui.KeyCtrlW, gocui.ModNone, saveVisualMain); err != nil {
-		return err
-	}
-	return nil
-}
-
-func saveMain(g *gocui.Gui, v *gocui.View) error {
-	f, err := ioutil.TempFile("", "gocui_demo_")
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	p := make([]byte, 5)
-	v.Rewind()
-	for {
-		n, err := v.Read(p)
-		if n > 0 {
-			if _, err := f.Write(p[:n]); err != nil {
-				return err
-			}
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func saveVisualMain(g *gocui.Gui, v *gocui.View) error {
-	f, err := ioutil.TempFile("", "gocui_demo_")
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	vb := v.ViewBuffer()
-	if _, err := io.Copy(f, strings.NewReader(vb)); err != nil {
 		return err
 	}
 	return nil
@@ -300,6 +324,41 @@ func (r *Render) layout(g *gocui.Gui) error {
 	return nil
 }
 
+func (r *Render) renderCompose(g *gocui.Gui) error {
+	maxX, maxY := g.Size()
+	_, err := g.View("compose")
+	if err != nil {
+		if view, err := g.SetView("compose", 0, 0, maxX, maxY); err != nil {
+			if err != gocui.ErrUnknownView {
+				return err
+			}
+			view.SetCursor(0, 0)
+			fmt.Fprintf(view, "%s\n", "--------------------Send - Ctrl+S--------------------")
+			fmt.Fprintf(view, "%s\n", "TO(comma-separated):")
+			fmt.Fprintf(view, "%s\n", "CC(comma-separated):")
+			fmt.Fprintf(view, "%s\n", "BCC(comma-separated):")
+			fmt.Fprintf(view, "%s\n", "Subject:")
+			fmt.Fprintf(view, "%s\n", "Body(below):")
+			view.Editable = true
+			view.Wrap = true
+			g.SetViewOnTop("compose")
+			g.SetCurrentView("compose")
+		}
+		return nil
+	}
+	err = g.DeleteView("compose")
+	if err != nil {
+		return err
+	}
+	g.Update(func(g *gocui.Gui) error {
+		if _, err := g.SetCurrentView("main"); err != nil {
+			return err
+		}
+		return nil
+	})
+	return nil
+}
+
 func (r *Render) renderKeyBind(g *gocui.Gui, _ *gocui.View) error {
 	maxX, maxY := g.Size()
 	_, err := g.View("top")
@@ -311,15 +370,17 @@ func (r *Render) renderKeyBind(g *gocui.Gui, _ *gocui.View) error {
 			fmt.Fprintf(v, "%s\n", "---- Key Bindings ----")
 			fmt.Fprintf(v, "%s\n\n", "")
 			fmt.Fprintf(v, "%s\n", "---- From Anywhere ----")
-			fmt.Fprintf(v, "%s\n", "Toggle help - CTRL+H")
-			fmt.Fprintf(v, "%s\n", "Change View - CTRL+Space")
-			fmt.Fprintf(v, "%s\n\n", "Mark as Read - CTRL+R")
+			fmt.Fprintf(v, "%s\n", "Toggle help    - CTRL+H")
+			fmt.Fprintf(v, "%s\n", "Change Vie     - CTRL+Space")
+			fmt.Fprintf(v, "%s\n", "Load Mail      - CTRL+L")
+			fmt.Fprintf(v, "%s\n", "Toggle Compose Mail      - CTRL+N")
+			fmt.Fprintf(v, "%s\n\n", "Mark as Read   - CTRL+R")
 			fmt.Fprintf(v, "%s\n", "---- From Side View ----")
-			fmt.Fprintf(v, "%s\n", "Next Page - Pg Dn")
-			fmt.Fprintf(v, "%s\n\n", "Prev Page - Pg Up")
+			fmt.Fprintf(v, "%s\n", "Next Page       - Pg Dn")
+			fmt.Fprintf(v, "%s\n\n", "Prev Page      - Pg Up")
 			fmt.Fprintf(v, "%s\n", "---- From Mail View ----")
-			fmt.Fprintf(v, "%s\n", "Scroll Down - Arrow Down")
-			fmt.Fprintf(v, "%s\n", "Scroll Up - Arrow Up")
+			fmt.Fprintf(v, "%s\n", "Scroll Down    - Arrow Down")
+			fmt.Fprintf(v, "%s\n", "Scroll Up      - Arrow Up")
 			g.SetViewOnTop("top")
 		}
 		return nil

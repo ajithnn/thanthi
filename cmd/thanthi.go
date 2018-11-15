@@ -12,7 +12,6 @@ import (
 	"github.com/ajithnn/thanthi/app"
 	"github.com/ajithnn/thanthi/render"
 	"github.com/gobuffalo/packr"
-	"gitlab.com/golang-commonmark/markdown"
 )
 
 func main() {
@@ -20,6 +19,7 @@ func main() {
 	subject := flag.String("s", "subject", "EMail Subject for send mode")
 	to := flag.String("t", "to", "comma separated 'TO' list for send mode")
 	cc := flag.String("cc", "", "comma separated 'CC' list for send mode")
+	bcc := flag.String("bcc", "", "comma separated 'BCC' list for send mode")
 	file := flag.String("f", "", "File containing EMail body in md format for send mode")
 	label := flag.String("l", "IMPORTANT", "comma separated Labels needed for clear and read modes")
 	configure := flag.Bool("configure", false, "Used configure oauth creds for account.Re-run to change account.")
@@ -57,8 +57,7 @@ func main() {
 		} else {
 			msg = readMailBody()
 		}
-		md := markdown.New(markdown.XHTMLOutput(true))
-		err = mailer.SendMail(*to, *subject, *cc, md.RenderToString([]byte(msg)))
+		err = mailer.SendMail(*to, *subject, *cc, *bcc, msg)
 	case "read":
 		r, err := render.NewRenderer(mailer)
 		err = mailer.ListMail("init")

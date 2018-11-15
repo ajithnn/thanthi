@@ -10,6 +10,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"gitlab.com/golang-commonmark/markdown"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -85,7 +86,10 @@ func (mailer *Mailer) ListLabels() error {
 	return nil
 }
 
-func (mailer *Mailer) SendMail(to, sub, cc, msg string) error {
+func (mailer *Mailer) SendMail(to, sub, cc, bcc, msg string) error {
+	md := markdown.New(markdown.XHTMLOutput(true))
+	msg = md.RenderToString([]byte(msg))
+
 	mesg := &gmail.Message{}
 	// RFC2822 Format for EMAIL Messages
 	// Headers \r\n\r\n
@@ -94,13 +98,11 @@ func (mailer *Mailer) SendMail(to, sub, cc, msg string) error {
 		"reply-to: ajith@amagi.com\r\n" +
 		"To: " + to + "\r\n" +
 		"CC: " + cc + "\r\n" +
+		"BCC: " + bcc + "\r\n" +
 		"Subject: " + sub + " \r\n" +
 		"Content-Type: text/html;\r\n\r\n" +
 		msg))
 	_, err := mailer.Service.Users.Messages.Send(mailer.User, mesg).Do()
-	if err == nil {
-		fmt.Println("Sent Message")
-	}
 	return err
 }
 
@@ -129,7 +131,10 @@ func (mailer *Mailer) ListMail(mode string) error {
 		}
 		resp, err = mailer.Service.Users.Threads.List(mailer.User).LabelIds(mailer.Labels...).MaxResults(20).PageToken(mailer.Pages[mailer.CurrentPageIndex-1]).Q("is:unread").Do()
 		mailer.CurrentPageIndex -= 1
+	case "reload":
+		resp, err = mailer.Service.Users.Threads.List(mailer.User).LabelIds(mailer.Labels...).MaxResults(20).PageToken(mailer.Pages[mailer.CurrentPageIndex]).Q("is:unread").Do()
 	}
+
 	if err != nil {
 		return err
 	}
