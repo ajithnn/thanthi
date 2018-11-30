@@ -57,7 +57,16 @@ func main() {
 		} else {
 			msg = readMailBody()
 		}
-		err = mailer.SendMail(*to, *subject, *cc, *bcc, msg)
+		params := app.ComposeParams{
+			"new",
+			*to,
+			*bcc,
+			*cc,
+			*subject,
+			msg,
+			"",
+		}
+		err = mailer.ComposeAndSend(&params, "new")
 	case "read":
 		r, err := render.NewRenderer(mailer)
 		err = mailer.ListMail("init")

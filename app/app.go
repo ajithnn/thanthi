@@ -15,6 +15,7 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/gmail/v1"
+	"jaytaylor.com/html2text"
 )
 
 type Thread struct {
@@ -25,9 +26,22 @@ type Thread struct {
 }
 
 type Message struct {
-	From  string
-	Reply string
-	Body  string
+	From      string
+	CC        string
+	BCC       string
+	Reply     string
+	Body      string
+	MessageID string
+}
+
+type ComposeParams struct {
+	Mode     string
+	To       string
+	Bcc      string
+	Cc       string
+	Subject  string
+	Body     string
+	ThreadID string
 }
 
 type Mailer struct {
@@ -56,9 +70,14 @@ func NewMailer(creds []byte, label string) (*Mailer, error) {
 		return &Mailer{}, err
 	}
 
+	resp, err := srv.Users.GetProfile("me").Do()
+	if err != nil {
+		return &Mailer{}, err
+	}
+
 	return &Mailer{
 		Service: srv,
-		User:    "me",
+		User:    resp.EmailAddress,
 		Labels:  strings.Split(label, ","),
 		Pages:   []string{""},
 	}, nil
@@ -84,26 +103,6 @@ func (mailer *Mailer) ListLabels() error {
 	}
 	w.Flush()
 	return nil
-}
-
-func (mailer *Mailer) SendMail(to, sub, cc, bcc, msg string) error {
-	md := markdown.New(markdown.XHTMLOutput(true))
-	msg = md.RenderToString([]byte(msg))
-
-	mesg := &gmail.Message{}
-	// RFC2822 Format for EMAIL Messages
-	// Headers \r\n\r\n
-	// Body
-	mesg.Raw = base64.URLEncoding.EncodeToString([]byte("From: 'me'\r\n" +
-		"reply-to: ajith@amagi.com\r\n" +
-		"To: " + to + "\r\n" +
-		"CC: " + cc + "\r\n" +
-		"BCC: " + bcc + "\r\n" +
-		"Subject: " + sub + " \r\n" +
-		"Content-Type: text/html;\r\n\r\n" +
-		msg))
-	_, err := mailer.Service.Users.Messages.Send(mailer.User, mesg).Do()
-	return err
 }
 
 func (mailer *Mailer) ListMail(mode string) error {
@@ -148,11 +147,21 @@ func (mailer *Mailer) ListMail(mode string) error {
 		for _, msg := range resp.Messages {
 			curMsg := &Message{}
 			for _, header := range msg.Payload.Headers {
-				if header.Name == "Subject" && curThread.Subject == "" {
-					curThread.Subject = header.Value
-				}
-				if header.Name == "From" {
+				switch header.Name {
+				case "Subject":
+					if curThread.Subject == "" {
+						curThread.Subject = header.Value
+					}
+				case "From":
 					curMsg.From = header.Value
+				case "Cc":
+					curMsg.CC = header.Value
+				case "Bcc":
+					curMsg.BCC = header.Value
+				case "Reply-To":
+					curMsg.Reply = header.Value
+				case "Message-ID":
+					curMsg.MessageID = header.Value
 				}
 			}
 			curMsg.ExtractMessage(msg)
@@ -174,13 +183,47 @@ func (mailer *Mailer) MarkAsRead(thread *Thread) error {
 	return nil
 }
 
-func (mailer *Mailer) getThread(id string) (*Thread, error) {
-	for _, thread := range mailer.Threads {
-		if thread.ID == id {
-			return thread, nil
-		}
+func (mailer *Mailer) ComposeAndSend(params *ComposeParams, replyID string) error {
+
+	var headers string
+	md := markdown.New(markdown.XHTMLOutput(true))
+	msg := md.RenderToString([]byte(params.Body))
+
+	// RFC2822 Format for EMAIL Messages
+	// Headers \r\n\r\n
+	// Body
+	switch params.Mode {
+	case "new":
+		headers = "From: " + mailer.User + "\r\n" +
+			"Reply-To: " + mailer.User + "\r\n" +
+			"To: " + params.To + "\r\n" +
+			"Cc: " + params.Cc + "\r\n" +
+			"Bcc: " + params.Bcc + "\r\n" +
+			"Subject: " + params.Subject + " \r\n" +
+			"Content-Type: text/html;\r\n\r\n"
+	case "reply":
+		reply := strings.Split(replyID, " ")
+		headers = "From: " + mailer.User + "\r\n" +
+			"Reply-To: " + mailer.User + "\r\n" +
+			"To: " + params.To + "\r\n" +
+			"CC: " + params.Cc + "\r\n" +
+			"BCC: " + params.Bcc + "\r\n" +
+			"Subject: " + params.Subject + " \r\n" +
+			"In-Reply-To: " + reply[len(reply)-1] + " \r\n" +
+			"References: " + replyID + " \r\n" +
+			"Content-Type: text/html;\r\n\r\n"
+	case "forward":
+	default:
 	}
-	return &Thread{}, fmt.Errorf("404:Thread not found")
+	return mailer.sendMail(base64.URLEncoding.EncodeToString([]byte(headers+msg)), params.ThreadID)
+}
+
+func (mailer *Mailer) sendMail(msg, threadId string) error {
+	mesg := &gmail.Message{}
+	mesg.Raw = msg
+	mesg.ThreadId = threadId
+	_, err := mailer.Service.Users.Messages.Send(mailer.User, mesg).Do()
+	return err
 }
 
 func (mailer *Mailer) deleteMessages(r *gmail.ListMessagesResponse) error {
@@ -207,14 +250,22 @@ func (m *Message) ExtractMessage(msg *gmail.Message) {
 			curParts = append(curParts, msg.Payload.Parts...)
 		}
 		for _, part := range curParts {
-			body, _ = base64.StdEncoding.DecodeString(part.Body.Data)
-			m.Body += strings.Replace(string(body), "\r", "", -1)
+			var cType string
+			for _, header := range part.Headers {
+				if header.Name == "Content-Type" {
+					cType = header.Value
+				}
+			}
+			if strings.Contains(cType, "text/plain") {
+				body, _ = base64.URLEncoding.DecodeString(part.Body.Data)
+				m.Body += strings.Replace(strings.Replace(strings.Replace(string(body), "<p>", "", -1), "</p>", "", -1), "\r", "", -1)
+			}
 		}
 	case "text":
-		body, _ = base64.StdEncoding.DecodeString(msg.Payload.Body.Data)
-		m.Body += strings.Replace(string(body), "\r", "", -1)
+		body, _ = base64.URLEncoding.DecodeString(msg.Payload.Body.Data)
+		text, _ := html2text.FromString(string(body), html2text.Options{PrettyTables: true})
+		m.Body += text
 	default:
-		fmt.Println("Unknown")
 	}
 }
 

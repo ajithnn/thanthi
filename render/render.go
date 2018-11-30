@@ -2,6 +2,7 @@ package render
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/ajithnn/thanthi/app"
@@ -18,7 +19,9 @@ type Render struct {
 	Handler     *gocui.Gui
 	MailHandler *app.Mailer
 	Views       []*gocui.View
-	TopView     string
+	Params      *app.ComposeParams
+	ViewButtons map[string][]string
+	ButtonIndex int
 }
 
 func NewRenderer(mailer *app.Mailer) (*Render, error) {
@@ -26,7 +29,19 @@ func NewRenderer(mailer *app.Mailer) (*Render, error) {
 	if err != nil {
 		return &Render{}, err
 	}
-	return &Render{g, mailer, make([]*gocui.View, 0), ""}, nil
+	return &Render{g, mailer, make([]*gocui.View, 0), &app.ComposeParams{}, make(map[string][]string), 0}, nil
+}
+
+func (r *Render) setParams(mode, to, bcc, cc, sub, body string) {
+	r.Params = &app.ComposeParams{
+		mode,
+		to,
+		bcc,
+		cc,
+		sub,
+		body,
+		"",
+	}
 }
 
 func (r *Render) Show() error {
@@ -126,27 +141,36 @@ func (r *Render) reloadPage(g *gocui.Gui) error {
 }
 
 func (r *Render) sendMail(g *gocui.Gui, v *gocui.View) error {
-	var to, cc, bcc, sub, body string
+	var replyID string
 	lines := v.BufferLines()
 	for index, line := range lines {
 		switch index {
 		case 1:
-			to = line[strings.Index(line, ":")+1:]
+			r.Params.To = line[strings.Index(line, ":")+1:]
 		case 2:
-			cc = line[strings.Index(line, ":")+1:]
+			r.Params.Cc = line[strings.Index(line, ":")+1:]
 		case 3:
-			bcc = line[strings.Index(line, ":")+1:]
+			r.Params.Bcc = line[strings.Index(line, ":")+1:]
 		case 4:
-			sub = line[strings.Index(line, ":")+1:]
+			r.Params.Subject = line[strings.Index(line, ":")+1:]
 		case 5:
 		case 0:
 		default:
-			body += line + "\n"
+			r.Params.Body += line + "\n"
 		}
 	}
-	err := r.MailHandler.SendMail(to, sub, cc, bcc, body)
+	_, cy := r.Views[SIDE].Cursor()
+	curThread := r.MailHandler.Threads[cy]
+	r.Params.ThreadID = curThread.ID
+	for ind, msgs := range curThread.Messages {
+		replyID += msgs.MessageID
+		if ind != len(curThread.Messages)-1 {
+			replyID += " "
+		}
+	}
+	err := r.MailHandler.ComposeAndSend(r.Params, replyID)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	g.Update(r.renderCompose)
 	return nil
@@ -178,6 +202,73 @@ func (r *Render) scrollUp(g *gocui.Gui, v *gocui.View) error {
 			return nil
 		}
 	}
+	return nil
+}
+
+func (r *Render) moveToMainView(g *gocui.Gui, v *gocui.View) error {
+	for _, button := range r.ViewButtons[v.Name()] {
+		buttonView, _ := g.View(button)
+		buttonView.Highlight = true
+		buttonView.SelFgColor = gocui.ColorDefault
+	}
+	_, err := g.SetCurrentView("main")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Render) moveToSideView(g *gocui.Gui, v *gocui.View) error {
+	for _, button := range r.ViewButtons[v.Name()] {
+		buttonView, _ := g.View(button)
+		buttonView.Highlight = true
+		buttonView.SelFgColor = gocui.ColorDefault
+	}
+	_, err := g.SetCurrentView("side")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Render) moveToSideActionView(g *gocui.Gui, v *gocui.View) error {
+	return r.moveToActionView("side-action", g, v)
+}
+
+func (r *Render) moveToMainActionView(g *gocui.Gui, v *gocui.View) error {
+	return r.moveToActionView("mail-action", g, v)
+}
+
+func (r *Render) moveToActionView(viewname string, g *gocui.Gui, v *gocui.View) error {
+	f, _ := os.OpenFile("./t.log", os.O_RDWR|os.O_APPEND, 0755)
+	defer f.Close()
+	for _, vv := range g.Views() {
+		fmt.Fprintf(f, "%v\n", vv.Name())
+	}
+	view, err := g.SetCurrentView(viewname)
+	if err != nil {
+		fmt.Fprintf(f, "%v\n", err)
+		return err
+	}
+	r.ButtonIndex = -1
+	return r.selectButton(g, view)
+}
+
+func (r *Render) selectButton(g *gocui.Gui, view *gocui.View) error {
+	if r.ButtonIndex >= 0 {
+		buttonName := r.ViewButtons[view.Name()][r.ButtonIndex]
+		buttonView, _ := g.View(buttonName)
+		buttonView.Highlight = true
+		buttonView.SelFgColor = gocui.ColorDefault
+	}
+	r.ButtonIndex = (r.ButtonIndex + 1) % len(r.ViewButtons[view.Name()])
+	buttonName := r.ViewButtons[view.Name()][r.ButtonIndex]
+	buttonView, err := g.View(buttonName)
+	if err != nil {
+		return err
+	}
+	buttonView.Highlight = true
+	buttonView.SelFgColor = gocui.ColorRed
 	return nil
 }
 
@@ -222,46 +313,16 @@ func quit(g *gocui.Gui, v *gocui.View) error {
 
 func (r *Render) keybindings() error {
 	g := r.Handler
+
+	// Side View Bindings
+
 	if err := g.SetKeybinding("side", gocui.KeyCtrlSpace, gocui.ModNone, nextView); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("main", gocui.KeyCtrlSpace, gocui.ModNone, nextView); err != nil {
 		return err
 	}
 	if err := g.SetKeybinding("side", gocui.KeyArrowDown, gocui.ModNone, cursorDown); err != nil {
 		return err
 	}
 	if err := g.SetKeybinding("side", gocui.KeyArrowUp, gocui.ModNone, cursorUp); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("main", gocui.KeyArrowDown, gocui.ModNone, r.scrollDown); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("main", gocui.KeyArrowUp, gocui.ModNone, r.scrollUp); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("", gocui.KeyCtrlR, gocui.ModNone, r.markRead); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("", gocui.KeyCtrlL, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
-		g.Update(r.initPage)
-		return nil
-	}); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("", gocui.KeyCtrlH, gocui.ModNone, r.renderKeyBind); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("", gocui.KeyCtrlN, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
-		g.Update(r.renderCompose)
-		return nil
-	}); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("compose", gocui.KeyCtrlS, gocui.ModNone, r.sendMail); err != nil {
-		return err
-	}
-	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
 		return err
 	}
 	if err := g.SetKeybinding("side", gocui.KeyEnter, gocui.ModNone, r.loadMail); err != nil {
@@ -281,12 +342,87 @@ func (r *Render) keybindings() error {
 	}); err != nil {
 		return err
 	}
+	if err := g.SetKeybinding("side", gocui.KeyCtrlA, gocui.ModNone, r.moveToSideActionView); err != nil {
+		return err
+	}
+
+	// Main View Bindings
+
+	if err := g.SetKeybinding("main", gocui.KeyCtrlSpace, gocui.ModNone, nextView); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("main", gocui.KeyArrowDown, gocui.ModNone, r.scrollDown); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("main", gocui.KeyArrowUp, gocui.ModNone, r.scrollUp); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("main", gocui.KeyCtrlA, gocui.ModNone, r.moveToMainActionView); err != nil {
+		return err
+	}
+
+	// All View Bindings
+
+	if err := g.SetKeybinding("", gocui.KeyCtrlR, gocui.ModNone, r.markRead); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gocui.KeyCtrlL, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
+		g.Update(r.initPage)
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gocui.KeyCtrlH, gocui.ModNone, r.renderKeyBind); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gocui.KeyCtrlN, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
+		r.setParams("new", "", "", "", "", "")
+		g.Update(r.renderCompose)
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gocui.KeyCtrlB, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
+		_, cy := r.Views[SIDE].Cursor()
+		thread := r.MailHandler.Threads[cy]
+		msg := thread.Messages[len(thread.Messages)-1]
+		r.setParams("reply", msg.From, msg.BCC, "", thread.Subject, "")
+		g.Update(r.renderCompose)
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
+		return err
+	}
+
+	// Compose View Bindings
+
+	if err := g.SetKeybinding("compose", gocui.KeyCtrlS, gocui.ModNone, r.sendMail); err != nil {
+		return err
+	}
+
+	// action view bindings
+
+	if err := g.SetKeybinding("side-action", gocui.KeyCtrlA, gocui.ModNone, r.moveToSideView); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("mail-action", gocui.KeyCtrlA, gocui.ModNone, r.moveToMainView); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("mail-action", gocui.KeyTab, gocui.ModNone, r.selectButton); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("side-action", gocui.KeyTab, gocui.ModNone, r.selectButton); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (r *Render) layout(g *gocui.Gui) error {
 	maxX, maxY := g.Size()
-	if v, err := g.SetView("side", -1, 1, maxX/3-10, maxY); err != nil {
+	if v, err := g.SetView("side", -1, 1, maxX/3-10, maxY-4); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
@@ -309,7 +445,21 @@ func (r *Render) layout(g *gocui.Gui) error {
 		r.renderHeader(g, "Messages")
 	}
 
-	if v, err := g.SetView("main", maxX/3-10, 1, maxX, maxY); err != nil {
+	if _, err := g.SetView("mail-action", maxX/3-10, maxY-4, maxX, maxY); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		r.renderButtons([]string{"Reply", "Forward", "MarkAsRead"}, "mail-action", maxX/3-10, maxY-4, maxX, maxY, g)
+	}
+
+	if _, err := g.SetView("side-action", -1, maxY-4, maxX/3-10, maxY); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		r.renderButtons([]string{"Next", "Prev"}, "side-action", -1, maxY-4, maxX/3-10, maxY, g)
+	}
+
+	if v, err := g.SetView("main", maxX/3-10, 1, maxX, maxY-4); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
@@ -333,12 +483,11 @@ func (r *Render) renderCompose(g *gocui.Gui) error {
 				return err
 			}
 			view.SetCursor(0, 0)
-			fmt.Fprintf(view, "%s\n", "--------------------Send - Ctrl+S--------------------")
-			fmt.Fprintf(view, "%s\n", "TO(comma-separated):")
-			fmt.Fprintf(view, "%s\n", "CC(comma-separated):")
-			fmt.Fprintf(view, "%s\n", "BCC(comma-separated):")
-			fmt.Fprintf(view, "%s\n", "Subject:")
-			fmt.Fprintf(view, "%s\n", "Body(below):")
+			fmt.Fprintf(view, "%s%s\n", "TO(comma-separated):", r.Params.To)
+			fmt.Fprintf(view, "%s%s\n", "CC(comma-separated):", r.Params.Cc)
+			fmt.Fprintf(view, "%s%s\n", "BCC(comma-separated):", r.Params.Bcc)
+			fmt.Fprintf(view, "%s%s\n", "Subject:", r.Params.Subject)
+			fmt.Fprintf(view, "%s%s\n", "Body(below):", r.Params.Body)
 			view.Editable = true
 			view.Wrap = true
 			g.SetViewOnTop("compose")
@@ -374,7 +523,8 @@ func (r *Render) renderKeyBind(g *gocui.Gui, _ *gocui.View) error {
 			fmt.Fprintf(v, "%s\n", "Change Vie     - CTRL+Space")
 			fmt.Fprintf(v, "%s\n", "Load Mail      - CTRL+L")
 			fmt.Fprintf(v, "%s\n", "Toggle Compose Mail      - CTRL+N")
-			fmt.Fprintf(v, "%s\n\n", "Mark as Read   - CTRL+R")
+			fmt.Fprintf(v, "%s\n\n", "Mark as Read   - CTRL+")
+			fmt.Fprintf(v, "%s\n\n", "Reply   - CTRL+Shift+R")
 			fmt.Fprintf(v, "%s\n", "---- From Side View ----")
 			fmt.Fprintf(v, "%s\n", "Next Page       - Pg Dn")
 			fmt.Fprintf(v, "%s\n\n", "Prev Page      - Pg Up")
@@ -413,7 +563,12 @@ func (r *Render) renderMailView(index int) {
 		fmt.Fprintln(r.Views[MAIN], "------------------")
 		return
 	}
+	fmt.Fprintf(r.Views[MAIN], "Subject: %s\n", r.MailHandler.Threads[index].Subject)
+	fmt.Fprintln(r.Views[MAIN], "========================================================================================================")
 	for _, msg := range r.MailHandler.Threads[index].Messages {
+		fmt.Fprintf(r.Views[MAIN], "%s:%s\n", "From", msg.From)
+		fmt.Fprintf(r.Views[MAIN], "%s:%s\n", "CC", msg.CC)
+		fmt.Fprintf(r.Views[MAIN], "%s:%s\n\n", "BCC", msg.BCC)
 		fmt.Fprintf(r.Views[MAIN], "%s\n", msg.Body)
 		fmt.Fprintf(r.Views[MAIN], "%s\n", []byte("-------------------------------------------------------------------------------------------------"))
 	}
@@ -431,4 +586,23 @@ func (r *Render) renderSideView() {
 	for _, thread := range r.MailHandler.Threads {
 		fmt.Fprintf(r.Views[SIDE], "%s\n", thread.Subject)
 	}
+}
+
+func (r *Render) renderButtons(buttons []string, parentName string, minX, minY, maxX, maxY int, g *gocui.Gui) error {
+	curMinX := minX + 1
+	curMinY := minY + 1
+	for _, buttonValue := range buttons {
+		if bv, err := g.SetView(buttonValue, curMinX, curMinY, curMinX+len(buttonValue)+1, curMinY+2); err != nil {
+			if err != gocui.ErrUnknownView {
+				return err
+			}
+			fmt.Fprintf(bv, "%s", buttonValue)
+			r.ViewButtons[parentName] = append(r.ViewButtons[parentName], buttonValue)
+		}
+		curMinX += len(buttonValue) + 3
+		if curMinX >= maxX {
+			break
+		}
+	}
+	return nil
 }

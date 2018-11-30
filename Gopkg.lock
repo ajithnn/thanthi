@@ -62,10 +62,22 @@
   revision = "60ab7e3d12ed91bc1b2486559c4b3a6b62297577"
 
 [[projects]]
+  name = "github.com/olekukonko/tablewriter"
+  packages = ["."]
+  revision = "e6d60cf7ba1f42d86d54cdf5508611c4aafb3970"
+  version = "v0.0.1"
+
+[[projects]]
   name = "github.com/pkg/errors"
   packages = ["."]
   revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
   version = "v0.8.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/ssor/bom"
+  packages = ["."]
+  revision = "6386211fdfcf24c0bfbdaceafd02849ed9a8a509"
 
 [[projects]]
   branch = "master"
@@ -100,7 +112,7 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
-  packages = ["context","context/ctxhttp"]
+  packages = ["context","context/ctxhttp","html","html/atom"]
   revision = "c10e9556a7bc0e7c942242b606f0acf024ad5d6a"
 
 [[projects]]
@@ -127,9 +139,15 @@
   revision = "4a4468ece617fc8205e99368fa2200e9d1fad421"
   version = "v1.3.0"
 
+[[projects]]
+  branch = "master"
+  name = "jaytaylor.com/html2text"
+  packages = ["."]
+  revision = "57d518f124b0cf46ea2021f25a01396b3522e6fb"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1ad695f7d180d30792e96c6b63364fc40eee97f90b5d57e4ba8e5e0bb75dfb0e"
+  inputs-digest = "fa2ada55d06a9314c70894cdf3d7687ccb4d87d3d36c647c2df52e89595137b7"
   solver-name = "gps-cdcl"
   solver-version = 1
