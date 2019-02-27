@@ -512,7 +512,7 @@ func (r *Render) renderKeyBind(g *gocui.Gui, _ *gocui.View) error {
 	maxX, maxY := g.Size()
 	_, err := g.View("top")
 	if err != nil {
-		if v, err := g.SetView("top", maxX/2-10, maxY/2-10, maxX/2+20, maxY/2+10); err != nil {
+		if v, err := g.SetView("top", maxX/2-10, maxY/2-10, maxX/2+30, maxY/2+10); err != nil {
 			if err != gocui.ErrUnknownView {
 				return err
 			}
@@ -520,10 +520,10 @@ func (r *Render) renderKeyBind(g *gocui.Gui, _ *gocui.View) error {
 			fmt.Fprintf(v, "%s\n\n", "")
 			fmt.Fprintf(v, "%s\n", "---- From Anywhere ----")
 			fmt.Fprintf(v, "%s\n", "Toggle help    - CTRL+H")
-			fmt.Fprintf(v, "%s\n", "Change Vie     - CTRL+Space")
+			fmt.Fprintf(v, "%s\n", "Change View     - CTRL+Space")
 			fmt.Fprintf(v, "%s\n", "Load Mail      - CTRL+L")
-			fmt.Fprintf(v, "%s\n", "Toggle Compose Mail      - CTRL+N")
-			fmt.Fprintf(v, "%s\n\n", "Mark as Read   - CTRL+")
+			fmt.Fprintf(v, "%s\n", "Compose Mail      - CTRL+N")
+			fmt.Fprintf(v, "%s\n\n", "Mark as Read   - CTRL+R")
 			fmt.Fprintf(v, "%s\n\n", "Reply   - CTRL+Shift+R")
 			fmt.Fprintf(v, "%s\n", "---- From Side View ----")
 			fmt.Fprintf(v, "%s\n", "Next Page       - Pg Dn")
