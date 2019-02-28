@@ -18,6 +18,8 @@ import (
 	"jaytaylor.com/html2text"
 )
 
+const MAXREAD int64 = 5
+
 type Thread struct {
 	ID       string
 	Subject  string
@@ -113,13 +115,13 @@ func (mailer *Mailer) ListMail(mode string) error {
 	mailer.Threads = make([]*Thread, 0)
 	switch mode {
 	case "init":
-		resp, err = mailer.Service.Users.Threads.List(mailer.User).LabelIds(mailer.Labels...).MaxResults(20).Q("is:unread").Do()
+		resp, err = mailer.Service.Users.Threads.List(mailer.User).LabelIds(mailer.Labels...).MaxResults(MAXREAD).Q("is:unread").Do()
 		if err == nil {
 			mailer.CurrentPageIndex = 0
 			mailer.Pages = append(mailer.Pages, resp.NextPageToken)
 		}
 	case "next":
-		resp, err = mailer.Service.Users.Threads.List(mailer.User).LabelIds(mailer.Labels...).MaxResults(20).PageToken(mailer.Pages[mailer.CurrentPageIndex+1]).Q("is:unread").Do()
+		resp, err = mailer.Service.Users.Threads.List(mailer.User).LabelIds(mailer.Labels...).MaxResults(MAXREAD).PageToken(mailer.Pages[mailer.CurrentPageIndex+1]).Q("is:unread").Do()
 		if err == nil {
 			mailer.Pages = append(mailer.Pages, resp.NextPageToken)
 			mailer.CurrentPageIndex += 1
@@ -128,10 +130,10 @@ func (mailer *Mailer) ListMail(mode string) error {
 		if mailer.CurrentPageIndex == 0 {
 			mailer.CurrentPageIndex = 1
 		}
-		resp, err = mailer.Service.Users.Threads.List(mailer.User).LabelIds(mailer.Labels...).MaxResults(20).PageToken(mailer.Pages[mailer.CurrentPageIndex-1]).Q("is:unread").Do()
+		resp, err = mailer.Service.Users.Threads.List(mailer.User).LabelIds(mailer.Labels...).MaxResults(MAXREAD).PageToken(mailer.Pages[mailer.CurrentPageIndex-1]).Q("is:unread").Do()
 		mailer.CurrentPageIndex -= 1
 	case "reload":
-		resp, err = mailer.Service.Users.Threads.List(mailer.User).LabelIds(mailer.Labels...).MaxResults(20).PageToken(mailer.Pages[mailer.CurrentPageIndex]).Q("is:unread").Do()
+		resp, err = mailer.Service.Users.Threads.List(mailer.User).LabelIds(mailer.Labels...).MaxResults(MAXREAD).PageToken(mailer.Pages[mailer.CurrentPageIndex]).Q("is:unread").Do()
 	}
 
 	if err != nil {
