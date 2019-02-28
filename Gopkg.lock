@@ -4,32 +4,38 @@
 [[projects]]
   name = "cloud.google.com/go"
   packages = ["compute/metadata"]
-  revision = "1fd54cf41e6e0e178ffe3c52b0e2260281f603e3"
-  version = "v0.32.0"
+  revision = "c9474f2f8deb81759839474b6bd1726bbfe1c1c4"
+  version = "v0.36.0"
 
 [[projects]]
   name = "github.com/gobuffalo/envy"
   packages = ["."]
-  revision = "e0b181c424e7ca1a36f6f2db4bdfd25ef3421e77"
-  version = "v1.6.7"
+  revision = "fa0dfdc10b5366ce365b7d9d1755a03e4e797bc5"
+  version = "v1.6.15"
 
 [[projects]]
   branch = "master"
   name = "github.com/gobuffalo/packd"
   packages = ["."]
-  revision = "c8273487026482b912d61bdbffd54705e96d1e8e"
+  revision = "d04dd98aca5b9aa7ca7c36ee639a21bcc69de32a"
 
 [[projects]]
   name = "github.com/gobuffalo/packr"
   packages = ["."]
-  revision = "816688b5663f5e5b1ca22fe1f14bf568058dbc05"
-  version = "v1.17.0"
+  revision = "5aa3f2df6770adb7f8719a43ef25c2522af176ed"
+  version = "v2.0.3"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/gobuffalo/syncx"
+  packages = ["."]
+  revision = "33c29581e754bd354236e977dfe426e55331c45d"
 
 [[projects]]
   name = "github.com/golang/protobuf"
   packages = ["proto"]
-  revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
-  version = "v1.2.0"
+  revision = "c823c79ea1570fb5ff454033735a8e68575d1d0f"
+  version = "v1.3.0"
 
 [[projects]]
   name = "github.com/joho/godotenv"
@@ -44,22 +50,16 @@
   version = "v0.4.0"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/markbates/oncer"
-  packages = ["."]
-  revision = "05fccaae8fc423476d98fd4c3e4699ba0fbbde48"
-
-[[projects]]
   name = "github.com/mattn/go-runewidth"
   packages = ["."]
-  revision = "ce7b0b5c7b45a81508558cd1dba6bb1e4ddb51bb"
-  version = "v0.0.3"
+  revision = "3ee7d812e62a0804a7d0a324e0249ca2db3476d3"
+  version = "v0.0.4"
 
 [[projects]]
   branch = "master"
   name = "github.com/nsf/termbox-go"
   packages = ["."]
-  revision = "60ab7e3d12ed91bc1b2486559c4b3a6b62297577"
+  revision = "02980233997d87bbda048393d47b4d453f7a398d"
 
 [[projects]]
   name = "github.com/olekukonko/tablewriter"
@@ -70,8 +70,14 @@
 [[projects]]
   name = "github.com/pkg/errors"
   packages = ["."]
-  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
-  version = "v0.8.0"
+  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+  version = "v0.8.1"
+
+[[projects]]
+  name = "github.com/rogpeppe/go-internal"
+  packages = ["modfile","module","semver"]
+  revision = "1cf9852c553c5b7da2d5a4a091129a7822fed0c9"
+  version = "v1.2.2"
 
 [[projects]]
   branch = "master"
@@ -110,16 +116,34 @@
   revision = "2cd490539afe7c6fc0eda6c59ef88fa93a00ea0d"
 
 [[projects]]
+  name = "go.uber.org/atomic"
+  packages = ["."]
+  revision = "1ea20fb1cbb1cc08cbd0d913a96dead89aa18289"
+  version = "v1.3.2"
+
+[[projects]]
+  name = "go.uber.org/multierr"
+  packages = ["."]
+  revision = "3c4937480c32f4c13a875a1829af76c98ca3d40a"
+  version = "v1.1.0"
+
+[[projects]]
+  name = "go.uber.org/zap"
+  packages = [".","buffer","internal/bufferpool","internal/color","internal/exit","zapcore"]
+  revision = "ff33455a0e382e8a81d14dd7c922020b6b5e7982"
+  version = "v1.9.1"
+
+[[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context","context/ctxhttp","html","html/atom"]
-  revision = "c10e9556a7bc0e7c942242b606f0acf024ad5d6a"
+  revision = "c95aed5357e77a4bf7d3955c46740000a17adee1"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/oauth2"
   packages = [".","google","internal","jws","jwt"]
-  revision = "232e45548389bd9357411a6922a07c5fd4068bda"
+  revision = "e64efc72b421e893cbf63f17ba2221e7d6d0b0f3"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -131,13 +155,13 @@
   branch = "master"
   name = "google.golang.org/api"
   packages = ["gensupport","gmail/v1","googleapi","googleapi/internal/uritemplates"]
-  revision = "04bb50b6b83d0e72253821af8cf3252d8e866517"
+  revision = "8a550ba84cafabe9b2262c41303f31e5a4626318"
 
 [[projects]]
   name = "google.golang.org/appengine"
   packages = [".","internal","internal/app_identity","internal/base","internal/datastore","internal/log","internal/modules","internal/remote_api","internal/urlfetch","urlfetch"]
-  revision = "4a4468ece617fc8205e99368fa2200e9d1fad421"
-  version = "v1.3.0"
+  revision = "e9657d882bb81064595ca3b56cbe2546bbabf7b1"
+  version = "v1.4.0"
 
 [[projects]]
   branch = "master"
@@ -148,6 +172,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fa2ada55d06a9314c70894cdf3d7687ccb4d87d3d36c647c2df52e89595137b7"
+  inputs-digest = "c6af619d4b5f31a37550bde909612758c37889ede3df52fcea12ccf1ce904413"
   solver-name = "gps-cdcl"
   solver-version = 1

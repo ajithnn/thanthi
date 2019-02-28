@@ -2,10 +2,10 @@ package render
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/ajithnn/thanthi/app"
+	"github.com/ajithnn/thanthi/logger"
 	"github.com/jroimartin/gocui"
 )
 
@@ -27,6 +27,7 @@ type Render struct {
 func NewRenderer(mailer *app.Mailer) (*Render, error) {
 	g, err := gocui.NewGui(gocui.OutputNormal)
 	if err != nil {
+		logger.NewLogger().Fatalf("NewRenderer#NewGui: %v", err)
 		return &Render{}, err
 	}
 	return &Render{g, mailer, make([]*gocui.View, 0), &app.ComposeParams{}, make(map[string][]string), 0}, nil
@@ -48,10 +49,12 @@ func (r *Render) Show() error {
 	r.Handler.Cursor = true
 	r.Handler.SetManagerFunc(r.layout)
 	if err := r.keybindings(); err != nil {
+		logger.NewLogger().Fatalf("Render#Show: Key binding failed %v", err)
 		return err
 	}
 
 	if err := r.Handler.MainLoop(); err != nil && err != gocui.ErrQuit {
+		logger.NewLogger().Fatalf("Render#Show: Main loop failed %v", err)
 		return err
 	}
 	return nil
@@ -70,6 +73,7 @@ func (r *Render) loadMail(g *gocui.Gui, v *gocui.View) error {
 		r.Views[MAIN].Clear()
 		r.renderMailView(cy)
 		if _, err := g.SetCurrentView("main"); err != nil {
+			logger.NewLogger().Fatalf("Render#LoadMail: SetCurrentView Failed failed %v", err)
 			return err
 		}
 		return nil
@@ -88,6 +92,7 @@ func (r *Render) nextPage(g *gocui.Gui) error {
 	r.renderMailView(0)
 
 	if _, err := g.SetCurrentView("side"); err != nil {
+		logger.NewLogger().Fatalf("Render#NextPage: SetCurrentView Failed failed %v", err)
 		return err
 	}
 
@@ -105,6 +110,7 @@ func (r *Render) prevPage(g *gocui.Gui) error {
 	r.renderMailView(0)
 
 	if _, err := g.SetCurrentView("side"); err != nil {
+		logger.NewLogger().Fatalf("Render#PrevPage: SetCurrentView Failed failed %v", err)
 		return err
 	}
 	return nil
@@ -120,6 +126,7 @@ func (r *Render) initPage(g *gocui.Gui) error {
 	r.renderMailView(0)
 
 	if _, err := g.SetCurrentView("side"); err != nil {
+		logger.NewLogger().Fatalf("Render#InitPage: SetCurrentView Failed failed %v", err)
 		return err
 	}
 	return nil
@@ -135,6 +142,7 @@ func (r *Render) reloadPage(g *gocui.Gui) error {
 	r.renderMailView(0)
 
 	if _, err := g.SetCurrentView("side"); err != nil {
+		logger.NewLogger().Fatalf("Render#ReloadPage: SetCurrentView Failed failed %v", err)
 		return err
 	}
 	return nil
@@ -145,16 +153,15 @@ func (r *Render) sendMail(g *gocui.Gui, v *gocui.View) error {
 	lines := v.BufferLines()
 	for index, line := range lines {
 		switch index {
-		case 1:
-			r.Params.To = line[strings.Index(line, ":")+1:]
-		case 2:
-			r.Params.Cc = line[strings.Index(line, ":")+1:]
-		case 3:
-			r.Params.Bcc = line[strings.Index(line, ":")+1:]
-		case 4:
-			r.Params.Subject = line[strings.Index(line, ":")+1:]
-		case 5:
 		case 0:
+			r.Params.To = line[strings.Index(line, ":")+1:]
+		case 1:
+			r.Params.Cc = line[strings.Index(line, ":")+1:]
+		case 2:
+			r.Params.Bcc = line[strings.Index(line, ":")+1:]
+		case 3:
+			r.Params.Subject = line[strings.Index(line, ":")+1:]
+		case 4:
 		default:
 			r.Params.Body += line + "\n"
 		}
@@ -170,10 +177,14 @@ func (r *Render) sendMail(g *gocui.Gui, v *gocui.View) error {
 	}
 	err := r.MailHandler.ComposeAndSend(r.Params, replyID)
 	if err != nil {
-		return err
+		logger.NewLogger().Fatalf("Render#SendMail: Send Failed %v", err)
 	}
 	g.Update(r.renderCompose)
 	return nil
+}
+
+func (r *Render) markReadWrapper(g *gocui.Gui) error {
+	return r.markRead(g, r.Views[MAIN])
 }
 
 func (r *Render) markRead(g *gocui.Gui, v *gocui.View) error {
@@ -213,6 +224,7 @@ func (r *Render) moveToMainView(g *gocui.Gui, v *gocui.View) error {
 	}
 	_, err := g.SetCurrentView("main")
 	if err != nil {
+		logger.NewLogger().Fatalf("Render#moveToMainView: SetCurrentView Failed failed %v", err)
 		return err
 	}
 	return nil
@@ -226,6 +238,7 @@ func (r *Render) moveToSideView(g *gocui.Gui, v *gocui.View) error {
 	}
 	_, err := g.SetCurrentView("side")
 	if err != nil {
+		logger.NewLogger().Fatalf("Render#moveToSideView: SetCurrentView Failed failed %v", err)
 		return err
 	}
 	return nil
@@ -240,14 +253,9 @@ func (r *Render) moveToMainActionView(g *gocui.Gui, v *gocui.View) error {
 }
 
 func (r *Render) moveToActionView(viewname string, g *gocui.Gui, v *gocui.View) error {
-	f, _ := os.OpenFile("./t.log", os.O_RDWR|os.O_APPEND, 0755)
-	defer f.Close()
-	for _, vv := range g.Views() {
-		fmt.Fprintf(f, "%v\n", vv.Name())
-	}
 	view, err := g.SetCurrentView(viewname)
 	if err != nil {
-		fmt.Fprintf(f, "%v\n", err)
+		logger.NewLogger().Fatalf("Render#moveToActionView: SetCurrentView Failed %v", err)
 		return err
 	}
 	r.ButtonIndex = -1
@@ -265,6 +273,7 @@ func (r *Render) selectButton(g *gocui.Gui, view *gocui.View) error {
 	buttonName := r.ViewButtons[view.Name()][r.ButtonIndex]
 	buttonView, err := g.View(buttonName)
 	if err != nil {
+		logger.NewLogger().Fatalf("Render#selectButton: ButtonView Failed %v", err)
 		return err
 	}
 	buttonView.Highlight = true
@@ -272,12 +281,54 @@ func (r *Render) selectButton(g *gocui.Gui, view *gocui.View) error {
 	return nil
 }
 
+func (r *Render) mailSendWrapper(g *gocui.Gui) error {
+	return r.mailSender(g, r.Views[MAIN])
+}
+
+func (r *Render) mailSender(g *gocui.Gui, v *gocui.View) error {
+	_, cy := r.Views[SIDE].Cursor()
+	thread := r.MailHandler.Threads[cy]
+	msg := thread.Messages[len(thread.Messages)-1]
+	r.setParams("reply", msg.From, msg.BCC, "", thread.Subject, "")
+	g.Update(r.renderCompose)
+	return nil
+}
+
+func (r *Render) handleButtonPress(g *gocui.Gui, view *gocui.View) error {
+	buttonName := r.ViewButtons[view.Name()][r.ButtonIndex]
+	//buttonView, _ := g.View(buttonName)
+	switch buttonName {
+	case "Next":
+		g.Update(r.nextPage)
+	case "Prev":
+		g.Update(r.prevPage)
+	case "Reply":
+		g.Update(r.mailSendWrapper)
+	case "MarkAsRead":
+		g.Update(r.markReadWrapper)
+	}
+
+	for _, button := range r.ViewButtons[view.Name()] {
+		buttonView, _ := g.View(button)
+		buttonView.Highlight = true
+		buttonView.SelFgColor = gocui.ColorDefault
+	}
+
+	return nil
+}
+
 func nextView(g *gocui.Gui, v *gocui.View) error {
 	if v == nil || v.Name() == "side" {
 		_, err := g.SetCurrentView("main")
+		if err != nil {
+			logger.NewLogger().Fatalf("Render#nextView: SetCurrentView Failed %v", err)
+		}
 		return err
 	}
 	_, err := g.SetCurrentView("side")
+	if err != nil {
+		logger.NewLogger().Fatalf("Render#nextView: SetCurrentView Failed %v", err)
+	}
 	return err
 }
 
@@ -382,14 +433,7 @@ func (r *Render) keybindings() error {
 	}); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding("", gocui.KeyCtrlB, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
-		_, cy := r.Views[SIDE].Cursor()
-		thread := r.MailHandler.Threads[cy]
-		msg := thread.Messages[len(thread.Messages)-1]
-		r.setParams("reply", msg.From, msg.BCC, "", thread.Subject, "")
-		g.Update(r.renderCompose)
-		return nil
-	}); err != nil {
+	if err := g.SetKeybinding("", gocui.KeyCtrlB, gocui.ModNone, r.mailSender); err != nil {
 		return err
 	}
 	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
@@ -404,16 +448,23 @@ func (r *Render) keybindings() error {
 
 	// action view bindings
 
-	if err := g.SetKeybinding("side-action", gocui.KeyCtrlA, gocui.ModNone, r.moveToSideView); err != nil {
-		return err
-	}
 	if err := g.SetKeybinding("mail-action", gocui.KeyCtrlA, gocui.ModNone, r.moveToMainView); err != nil {
 		return err
 	}
 	if err := g.SetKeybinding("mail-action", gocui.KeyTab, gocui.ModNone, r.selectButton); err != nil {
 		return err
 	}
+	if err := g.SetKeybinding("mail-action", gocui.KeyEnter, gocui.ModNone, r.handleButtonPress); err != nil {
+		return err
+	}
+
+	if err := g.SetKeybinding("side-action", gocui.KeyCtrlA, gocui.ModNone, r.moveToSideView); err != nil {
+		return err
+	}
 	if err := g.SetKeybinding("side-action", gocui.KeyTab, gocui.ModNone, r.selectButton); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("side-action", gocui.KeyEnter, gocui.ModNone, r.handleButtonPress); err != nil {
 		return err
 	}
 
@@ -449,7 +500,7 @@ func (r *Render) layout(g *gocui.Gui) error {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		r.renderButtons([]string{"Reply", "Forward", "MarkAsRead"}, "mail-action", maxX/3-10, maxY-4, maxX, maxY, g)
+		r.renderButtons([]string{"Reply", "MarkAsRead"}, "mail-action", maxX/3-10, maxY-4, maxX, maxY, g)
 	}
 
 	if _, err := g.SetView("side-action", -1, maxY-4, maxX/3-10, maxY); err != nil {
@@ -524,7 +575,7 @@ func (r *Render) renderKeyBind(g *gocui.Gui, _ *gocui.View) error {
 			fmt.Fprintf(v, "%s\n", "Load Mail      - CTRL+L")
 			fmt.Fprintf(v, "%s\n", "Compose Mail      - CTRL+N")
 			fmt.Fprintf(v, "%s\n\n", "Mark as Read   - CTRL+R")
-			fmt.Fprintf(v, "%s\n\n", "Reply   - CTRL+Shift+R")
+			fmt.Fprintf(v, "%s\n\n", "Reply   - CTRL+B")
 			fmt.Fprintf(v, "%s\n", "---- From Side View ----")
 			fmt.Fprintf(v, "%s\n", "Next Page       - Pg Dn")
 			fmt.Fprintf(v, "%s\n\n", "Prev Page      - Pg Up")

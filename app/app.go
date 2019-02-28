@@ -10,6 +10,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/ajithnn/thanthi/logger"
 	"gitlab.com/golang-commonmark/markdown"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
@@ -134,6 +135,10 @@ func (mailer *Mailer) ListMail(mode string) error {
 		mailer.CurrentPageIndex -= 1
 	case "reload":
 		resp, err = mailer.Service.Users.Threads.List(mailer.User).LabelIds(mailer.Labels...).MaxResults(MAXREAD).PageToken(mailer.Pages[mailer.CurrentPageIndex]).Q("is:unread").Do()
+		if len(resp.Threads) == 0 {
+			// Call Previous Page if current Page is empty upon reload
+			return mailer.ListMail("prev")
+		}
 	}
 
 	if err != nil {
@@ -194,7 +199,10 @@ func (mailer *Mailer) ComposeAndSend(params *ComposeParams, replyID string) erro
 	// RFC2822 Format for EMAIL Messages
 	// Headers \r\n\r\n
 	// Body
+	logger.NewLogger().Infof("Sending Email with params: %v", params)
 	switch params.Mode {
+	case "forward":
+		fallthrough
 	case "new":
 		headers = "From: " + mailer.User + "\r\n" +
 			"Reply-To: " + mailer.User + "\r\n" +
@@ -208,13 +216,12 @@ func (mailer *Mailer) ComposeAndSend(params *ComposeParams, replyID string) erro
 		headers = "From: " + mailer.User + "\r\n" +
 			"Reply-To: " + mailer.User + "\r\n" +
 			"To: " + params.To + "\r\n" +
-			"CC: " + params.Cc + "\r\n" +
-			"BCC: " + params.Bcc + "\r\n" +
+			"Cc: " + params.Cc + "\r\n" +
+			"Bcc: " + params.Bcc + "\r\n" +
 			"Subject: " + params.Subject + " \r\n" +
 			"In-Reply-To: " + reply[len(reply)-1] + " \r\n" +
 			"References: " + replyID + " \r\n" +
 			"Content-Type: text/html;\r\n\r\n"
-	case "forward":
 	default:
 	}
 	return mailer.sendMail(base64.URLEncoding.EncodeToString([]byte(headers+msg)), params.ThreadID)
