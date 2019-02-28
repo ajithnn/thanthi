@@ -393,7 +393,7 @@ func (r *Render) keybindings() error {
 	}); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding("side", gocui.KeyCtrlA, gocui.ModNone, r.moveToSideActionView); err != nil {
+	if err := g.SetKeybinding("side", gocui.KeyTab, gocui.ModNone, r.moveToSideActionView); err != nil {
 		return err
 	}
 
@@ -408,7 +408,7 @@ func (r *Render) keybindings() error {
 	if err := g.SetKeybinding("main", gocui.KeyArrowUp, gocui.ModNone, r.scrollUp); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding("main", gocui.KeyCtrlA, gocui.ModNone, r.moveToMainActionView); err != nil {
+	if err := g.SetKeybinding("main", gocui.KeyTab, gocui.ModNone, r.moveToMainActionView); err != nil {
 		return err
 	}
 
@@ -448,7 +448,7 @@ func (r *Render) keybindings() error {
 
 	// action view bindings
 
-	if err := g.SetKeybinding("mail-action", gocui.KeyCtrlA, gocui.ModNone, r.moveToMainView); err != nil {
+	if err := g.SetKeybinding("mail-action", gocui.KeyEnd, gocui.ModNone, r.moveToMainView); err != nil {
 		return err
 	}
 	if err := g.SetKeybinding("mail-action", gocui.KeyTab, gocui.ModNone, r.selectButton); err != nil {
@@ -458,7 +458,7 @@ func (r *Render) keybindings() error {
 		return err
 	}
 
-	if err := g.SetKeybinding("side-action", gocui.KeyCtrlA, gocui.ModNone, r.moveToSideView); err != nil {
+	if err := g.SetKeybinding("side-action", gocui.KeyEnd, gocui.ModNone, r.moveToSideView); err != nil {
 		return err
 	}
 	if err := g.SetKeybinding("side-action", gocui.KeyTab, gocui.ModNone, r.selectButton); err != nil {
@@ -563,7 +563,7 @@ func (r *Render) renderKeyBind(g *gocui.Gui, _ *gocui.View) error {
 	maxX, maxY := g.Size()
 	_, err := g.View("top")
 	if err != nil {
-		if v, err := g.SetView("top", maxX/2-10, maxY/2-10, maxX/2+30, maxY/2+10); err != nil {
+		if v, err := g.SetView("top", maxX/2-10, maxY/2-10, maxX/2+30, maxY/2+20); err != nil {
 			if err != gocui.ErrUnknownView {
 				return err
 			}
@@ -579,9 +579,13 @@ func (r *Render) renderKeyBind(g *gocui.Gui, _ *gocui.View) error {
 			fmt.Fprintf(v, "%s\n", "---- From Side View ----")
 			fmt.Fprintf(v, "%s\n", "Next Page       - Pg Dn")
 			fmt.Fprintf(v, "%s\n\n", "Prev Page      - Pg Up")
+			fmt.Fprintf(v, "%s\n\n", "Move to ActionView      - Tab")
 			fmt.Fprintf(v, "%s\n", "---- From Mail View ----")
 			fmt.Fprintf(v, "%s\n", "Scroll Down    - Arrow Down")
 			fmt.Fprintf(v, "%s\n", "Scroll Up      - Arrow Up")
+			fmt.Fprintf(v, "%s\n\n", "Move to ActionView      - Tab")
+			fmt.Fprintf(v, "%s\n", "---- From Action View ----")
+			fmt.Fprintf(v, "%s\n\n", "Move out of ActionView      - End")
 			g.SetViewOnTop("top")
 		}
 		return nil
